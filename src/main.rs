@@ -17,9 +17,22 @@ fn main() {
 }
 
 fn handle_connection(mut stream: TcpStream) {
+    let mut buf = [0; 1024];
     loop {
-        stream
-            .write_all("+PONG\r\n".as_bytes())
-            .expect("Failed to PONG");
+        match stream.read(&mut buf) {
+            Ok(0) => {
+                println!("Client disconnected!");
+                return;
+            }
+            Ok(_) => {
+                stream
+                    .write_all("+PONG\r\n".as_bytes())
+                    .expect("Failed to PONG");
+            }
+            Err(err) => {
+                eprintln!("Error reading from stream: {}", err);
+                return;
+            }
+        }
     }
 }
