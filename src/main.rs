@@ -1,38 +1,33 @@
-use std::io::prelude::*;
-use std::net::{TcpListener, TcpStream};
+use anyhow::Result;
+use tokio::{
+    io::{AsyncReadExt, AsyncWriteExt},
+    net::{TcpListener, TcpStream},
+};
 
-fn main() {
-    let listener = TcpListener::bind("127.0.0.1:6379").unwrap();
+#[tokio::main]
+async fn main() -> Result<()> {
+    let listener = TcpListener::bind("127.0.0.1:6379").await.unwrap();
 
-    for stream in listener.incoming() {
-        match stream {
-            Ok(stream) => {
-                handle_connection(stream);
+    loop {
+        let (stream, _) = listener.accept().await.unwrap();
+        tokio::spawn(async move {
+            match handle_connection(stream).await {
+                Ok(()) => (),
+                Err(msg) => eprintln!("Error handling connection: {}", msg),
             }
-            Err(e) => {
-                println!("error: {}", e);
-            }
-        }
+        });
     }
 }
 
-fn handle_connection(mut stream: TcpStream) {
+async fn handle_connection(mut stream: TcpStream) -> Result<()> {
     let mut buf = [0; 1024];
     loop {
-        match stream.read(&mut buf) {
-            Ok(0) => {
-                println!("Client disconnected!");
-                return;
-            }
-            Ok(_) => {
-                stream
-                    .write_all("+PONG\r\n".as_bytes())
-                    .expect("Failed to PONG");
-            }
-            Err(err) => {
-                eprintln!("Error reading from stream: {}", err);
-                return;
-            }
+        let num_bytes = stream.read(&mut buf).await?;
+
+        if num_bytes == 0 {
+            return Ok(());
         }
+
+        stream.write_all("+PONG\r\n".as_bytes()).await?;
     }
 }
