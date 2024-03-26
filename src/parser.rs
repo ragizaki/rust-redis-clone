@@ -47,6 +47,7 @@ impl Parser {
                 Ok(Payload::Simple(SimpleString(String::from("OK"))))
             }
             "get" => Ok(self.get(iter)),
+            "info" => Ok(Payload::Bulk(BulkString(String::from("role:master")))),
             other => Err(anyhow!("Command {other} is unimplemented")),
         }
     }
