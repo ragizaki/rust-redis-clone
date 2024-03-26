@@ -3,7 +3,6 @@ mod resp;
 
 use anyhow::Result;
 use parser::Parser;
-use resp::Payload;
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     net::{TcpListener, TcpStream},
@@ -34,9 +33,9 @@ async fn handle_connection(mut stream: TcpStream) -> Result<()> {
         }
 
         let request = std::str::from_utf8(&buf[..num_bytes]).expect("Invalid ASCII");
-        let parser = Parser::new();
+        let mut parser = Parser::new();
         let body = parser.parse(request)?;
-        let payload = Payload::from_array(body)?;
+        let payload = parser.from_array(body)?;
 
         stream.write_all(payload.serialize().as_bytes()).await?;
     }

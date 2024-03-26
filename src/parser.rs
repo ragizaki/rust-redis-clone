@@ -1,11 +1,48 @@
-use crate::resp::{Array, BulkString};
+use crate::resp::{Array, BulkString, Payload, SimpleString};
 use anyhow::{anyhow, Result};
+use std::collections::HashMap;
 
-pub struct Parser;
+pub struct Parser {
+    cache: HashMap<String, String>,
+}
 
 impl Parser {
     pub fn new() -> Self {
-        Parser
+        Parser {
+            cache: HashMap::new(),
+        }
+    }
+
+    pub fn from_array(&mut self, value: Array) -> Result<Payload> {
+        let mut iter = value.contents.iter();
+        let command = iter.next().unwrap();
+
+        match command.0.to_lowercase().as_str() {
+            "ping" => Ok(Payload::Simple(SimpleString(String::from("PONG")))),
+            "echo" => {
+                let echoed = iter
+                    .map(|BulkString(s)| s.clone())
+                    .collect::<Vec<String>>()
+                    .join(" ");
+                Ok(Payload::Bulk(BulkString(String::from(echoed))))
+            }
+            "set" => {
+                let BulkString(key) = iter.next().unwrap();
+                let BulkString(val) = iter.next().unwrap();
+
+                self.cache.insert(key.to_string(), val.to_string());
+
+                Ok(Payload::Simple(SimpleString(String::from("OK"))))
+            }
+            "get" => {
+                let BulkString(key) = iter.next().unwrap();
+                match self.cache.get(key) {
+                    Some(val) => Ok(Payload::Bulk(BulkString(val.to_string()))),
+                    None => Ok(Payload::Null),
+                }
+            }
+            other => Err(anyhow!("Command {other} is unimplemented")),
+        }
     }
 
     pub fn parse(&self, s: &str) -> Result<Array> {
