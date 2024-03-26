@@ -18,7 +18,6 @@ struct Args {
 #[tokio::main]
 async fn main() -> Result<()> {
     let args = Args::parse();
-    println!("{}", args.port);
 
     let listener = TcpListener::bind(format!("127.0.0.1:{}", args.port))
         .await
