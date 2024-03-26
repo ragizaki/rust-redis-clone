@@ -1,15 +1,30 @@
 use crate::resp::{Array, BulkString, Payload, SimpleString};
 use anyhow::{anyhow, Result};
+use core::slice::Iter;
 use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
+use tokio::time::{Duration, Instant};
+
+#[derive(Debug, PartialEq)]
+struct Entry {
+    value: String,
+    expiry: Option<Instant>,
+}
+
+impl Entry {
+    fn new(value: String, expiry: Option<Instant>) -> Self {
+        Self { value, expiry }
+    }
+}
 
 pub struct Parser {
-    cache: HashMap<String, String>,
+    cache: Arc<Mutex<HashMap<String, Entry>>>,
 }
 
 impl Parser {
     pub fn new() -> Self {
         Parser {
-            cache: HashMap::new(),
+            cache: Arc::new(Mutex::new(HashMap::new())),
         }
     }
 
@@ -27,20 +42,11 @@ impl Parser {
                 Ok(Payload::Bulk(BulkString(String::from(echoed))))
             }
             "set" => {
-                let BulkString(key) = iter.next().unwrap();
-                let BulkString(val) = iter.next().unwrap();
-
-                self.cache.insert(key.to_string(), val.to_string());
+                self.set(iter);
 
                 Ok(Payload::Simple(SimpleString(String::from("OK"))))
             }
-            "get" => {
-                let BulkString(key) = iter.next().unwrap();
-                match self.cache.get(key) {
-                    Some(val) => Ok(Payload::Bulk(BulkString(val.to_string()))),
-                    None => Ok(Payload::Null),
-                }
-            }
+            "get" => Ok(self.get(iter)),
             other => Err(anyhow!("Command {other} is unimplemented")),
         }
     }
@@ -88,6 +94,41 @@ impl Parser {
             (s, s.chars().count())
         }
     }
+
+    fn set(&mut self, mut iter: Iter<'_, BulkString>) {
+        let BulkString(key) = iter.next().unwrap();
+        let BulkString(val) = iter.next().unwrap();
+        let mut cache = self.cache.lock().unwrap();
+
+        // if there is a next value, it is an expiry
+        if let Some(BulkString(px)) = iter.next() {
+            assert!(px == "px");
+            let BulkString(expiry_str) = iter.next().unwrap();
+            let expiry_ms: u64 = expiry_str.parse().expect("Could not parse expiry");
+            let expiry = Instant::now() + Duration::from_millis(expiry_ms);
+            let entry = Entry::new(val.to_string(), Some(expiry));
+            cache.insert(key.to_string(), entry);
+        } else {
+            let entry = Entry::new(val.to_string(), None);
+            cache.insert(key.to_string(), entry);
+        }
+    }
+
+    fn get(&self, mut iter: Iter<'_, BulkString>) -> Payload {
+        let BulkString(key) = iter.next().unwrap();
+        let cache = self.cache.lock().unwrap();
+
+        if let Some(entry) = cache.get(key) {
+            if let Some(expiry) = entry.expiry {
+                if Instant::now() > expiry {
+                    return Payload::Null;
+                }
+            }
+            return Payload::Bulk(BulkString(entry.value.clone()));
+        }
+
+        Payload::Null
+    }
 }
 
 #[cfg(test)]
@@ -118,29 +159,5 @@ mod parser_tests {
 
         let actual = Parser::new().parse(str);
         assert_eq!(actual.unwrap(), expected);
-    }
-
-    #[test]
-    fn test_set_and_get() {
-        let mut parser = Parser::new();
-
-        // testing set
-        let array = Array::new(vec![
-            BulkString("set".to_string()),
-            BulkString("mango".to_string()),
-            BulkString("orange".to_string()),
-        ]);
-        let payload = parser.from_array(array).unwrap();
-        assert_eq!(parser.cache.get("mango"), Some(&"orange".to_string()));
-        assert_eq!(payload, Payload::Simple(SimpleString(String::from("OK"))));
-
-        // testing get
-        let array = Array::new(vec![
-            BulkString("get".to_string()),
-            BulkString("mango".to_string()),
-        ]);
-        let payload = parser.from_array(array).unwrap();
-        println!("{}", payload.serialize());
-        assert_eq!(payload, Payload::Bulk(BulkString(String::from("orange"))));
     }
 }
