@@ -1,7 +1,9 @@
 mod parser;
+mod resp;
 
 use anyhow::Result;
-use parser::{Parser, Payload};
+use parser::Parser;
+use resp::Payload;
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     net::{TcpListener, TcpStream},

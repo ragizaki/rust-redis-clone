@@ -1,47 +1,5 @@
+use crate::resp::{Array, BulkString};
 use anyhow::{anyhow, Result};
-
-#[derive(Debug, PartialEq)]
-pub struct Array {
-    contents: Vec<BulkString>,
-}
-
-pub struct SimpleString(String);
-
-#[derive(Debug, PartialEq)]
-pub struct BulkString(pub String);
-
-pub enum Payload {
-    Simple(SimpleString),
-    Bulk(BulkString),
-}
-
-impl Payload {
-    pub fn serialize(&self) -> String {
-        match self {
-            Self::Simple(SimpleString(s)) => format!("+{s}\r\n"),
-            Self::Bulk(BulkString(s)) => format!("${}\r\n{s}\r\n", s.len()),
-        }
-    }
-}
-
-impl Payload {
-    pub fn from_array(value: Array) -> Result<Payload> {
-        let mut iter = value.contents.iter();
-        let command = iter.next().unwrap();
-
-        match command.0.to_lowercase().as_str() {
-            "ping" => Ok(Payload::Simple(SimpleString(String::from("PONG")))),
-            "echo" => {
-                let echoed = iter
-                    .map(|BulkString(s)| s.clone())
-                    .collect::<Vec<String>>()
-                    .join(" ");
-                Ok(Payload::Bulk(BulkString(String::from(echoed))))
-            }
-            other => Err(anyhow!("Command {other} is unimplemented")),
-        }
-    }
-}
 
 pub struct Parser;
 
