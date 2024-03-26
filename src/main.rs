@@ -1,8 +1,7 @@
 mod parser;
 
-use anyhow::{anyhow, Result};
-use parser::RedisCommand;
-use std::str::FromStr;
+use anyhow::Result;
+use parser::{Parser, Payload};
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     net::{TcpListener, TcpStream},
@@ -32,17 +31,11 @@ async fn handle_connection(mut stream: TcpStream) -> Result<()> {
             return Ok(());
         }
 
-        let command = String::from_utf8(buf[..num_bytes].to_vec()).unwrap();
-        let command = RedisCommand::from_str(&command);
+        let request = std::str::from_utf8(&buf[..num_bytes]).expect("Invalid ASCII");
+        let parser = Parser::new();
+        let body = parser.parse(request)?;
+        let payload = Payload::from_array(body)?;
 
-        let response = match command {
-            Ok(c) => match c {
-                RedisCommand::Ping => String::from("+PONG\r\n"),
-                RedisCommand::Echo(str) => format!("${}\r\n{}\r\n", str.len(), str),
-            },
-            Err(msg) => return Err(anyhow!(msg)),
-        };
-
-        stream.write_all(response.as_bytes()).await?;
+        stream.write_all(payload.serialize().as_bytes()).await?;
     }
 }
