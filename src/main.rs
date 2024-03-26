@@ -10,7 +10,19 @@ use tokio::{
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let listener = TcpListener::bind("127.0.0.1:6379").await.unwrap();
+    let mut args = std::env::args();
+
+    // skip prog name
+    args.next();
+
+    let port = match args.next() {
+        Some(arg) => arg,
+        None => "6379".to_string(),
+    };
+
+    let listener = TcpListener::bind(format!("127.0.0.1:{port}"))
+        .await
+        .unwrap();
 
     loop {
         let (stream, _) = listener.accept().await.unwrap();
