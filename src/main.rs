@@ -2,25 +2,25 @@ mod parser;
 mod resp;
 
 use anyhow::Result;
+use clap::Parser as ClapParser;
 use parser::Parser;
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     net::{TcpListener, TcpStream},
 };
 
+#[derive(ClapParser, Debug)]
+struct Args {
+    #[arg(short, long, default_value_t = 6379)]
+    port: u64,
+}
+
 #[tokio::main]
 async fn main() -> Result<()> {
-    let mut args = std::env::args();
+    let args = Args::parse();
+    println!("{}", args.port);
 
-    // skip prog name
-    args.next();
-
-    let port = match args.next() {
-        Some(arg) => arg,
-        None => "6379".to_string(),
-    };
-
-    let listener = TcpListener::bind(format!("127.0.0.1:{port}"))
+    let listener = TcpListener::bind(format!("127.0.0.1:{}", args.port))
         .await
         .unwrap();
 
