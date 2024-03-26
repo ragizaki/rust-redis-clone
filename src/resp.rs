@@ -3,11 +3,19 @@ pub struct Array {
     pub contents: Vec<BulkString>,
 }
 
+impl Array {
+    pub fn new(contents: Vec<BulkString>) -> Self {
+        Self { contents }
+    }
+}
+
+#[derive(Debug, PartialEq)]
 pub struct SimpleString(pub String);
 
 #[derive(Debug, PartialEq)]
 pub struct BulkString(pub String);
 
+#[derive(Debug, PartialEq)]
 pub enum Payload {
     Simple(SimpleString),
     Bulk(BulkString),

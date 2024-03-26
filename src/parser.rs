@@ -57,7 +57,7 @@ impl Parser {
             contents.push(str);
             cursor += length;
         }
-        Ok(Array { contents })
+        Ok(Array::new(contents))
     }
 
     fn parse_bulk_string(&self, s: &str) -> Result<(BulkString, usize)> {
@@ -111,13 +111,36 @@ mod parser_tests {
     #[test]
     fn test_parse() {
         let str = "*2\r\n$4\r\necho\r\n$3\r\nhey\r\n";
-        let expected = Array {
-            contents: vec![
-                BulkString(String::from("echo")),
-                BulkString(String::from("hey")),
-            ],
-        };
+        let expected = Array::new(vec![
+            BulkString(String::from("echo")),
+            BulkString(String::from("hey")),
+        ]);
+
         let actual = Parser::new().parse(str);
         assert_eq!(actual.unwrap(), expected);
+    }
+
+    #[test]
+    fn test_set_and_get() {
+        let mut parser = Parser::new();
+
+        // testing set
+        let array = Array::new(vec![
+            BulkString("set".to_string()),
+            BulkString("mango".to_string()),
+            BulkString("orange".to_string()),
+        ]);
+        let payload = parser.from_array(array).unwrap();
+        assert_eq!(parser.cache.get("mango"), Some(&"orange".to_string()));
+        assert_eq!(payload, Payload::Simple(SimpleString(String::from("OK"))));
+
+        // testing get
+        let array = Array::new(vec![
+            BulkString("get".to_string()),
+            BulkString("mango".to_string()),
+        ]);
+        let payload = parser.from_array(array).unwrap();
+        println!("{}", payload.serialize());
+        assert_eq!(payload, Payload::Bulk(BulkString(String::from("orange"))));
     }
 }
