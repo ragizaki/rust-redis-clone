@@ -30,7 +30,7 @@ impl Payload {
         let command = iter.next().unwrap();
 
         match command.0.to_lowercase().as_str() {
-            "ping" => Ok(Payload::Simple(SimpleString(String::from("PING")))),
+            "ping" => Ok(Payload::Simple(SimpleString(String::from("PONG")))),
             "echo" => {
                 let echoed = iter
                     .map(|BulkString(s)| s.clone())
