@@ -1,34 +1,17 @@
-use crate::resp::{Array, BulkString, Payload, SimpleString};
+use crate::{
+    resp::{Array, BulkString, Payload, SimpleString},
+    server::Server,
+};
 use anyhow::{anyhow, Result};
-use core::slice::Iter;
-use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
-use tokio::time::{Duration, Instant};
 
-#[derive(Debug, PartialEq)]
-struct Entry {
-    value: String,
-    expiry: Option<Instant>,
-}
-
-impl Entry {
-    fn new(value: String, expiry: Option<Instant>) -> Self {
-        Self { value, expiry }
-    }
-}
-
-pub struct Parser {
-    cache: Arc<Mutex<HashMap<String, Entry>>>,
-}
+pub struct Parser;
 
 impl Parser {
     pub fn new() -> Self {
-        Parser {
-            cache: Arc::new(Mutex::new(HashMap::new())),
-        }
+        Parser
     }
 
-    pub fn from_array(&mut self, value: Array) -> Result<Payload> {
+    pub fn from_array(&self, value: Array, server: &mut Server) -> Result<Payload> {
         let mut iter = value.contents.iter();
         let command = iter.next().unwrap();
 
@@ -42,12 +25,12 @@ impl Parser {
                 Ok(Payload::Bulk(BulkString(String::from(echoed))))
             }
             "set" => {
-                self.set(iter);
+                server.set(iter);
 
                 Ok(Payload::Simple(SimpleString(String::from("OK"))))
             }
-            "get" => Ok(self.get(iter)),
-            "info" => Ok(Payload::Bulk(BulkString(String::from("role:master")))),
+            "get" => Ok(server.get(iter)),
+            "info" => Ok(Payload::Bulk(BulkString(format!("role:{}", server.info())))),
             other => Err(anyhow!("Command {other} is unimplemented")),
         }
     }
@@ -94,41 +77,6 @@ impl Parser {
         } else {
             (s, s.chars().count())
         }
-    }
-
-    fn set(&mut self, mut iter: Iter<'_, BulkString>) {
-        let BulkString(key) = iter.next().unwrap();
-        let BulkString(val) = iter.next().unwrap();
-        let mut cache = self.cache.lock().unwrap();
-
-        // if there is a next value, it is an expiry
-        if let Some(BulkString(px)) = iter.next() {
-            assert!(px == "px");
-            let BulkString(expiry_str) = iter.next().unwrap();
-            let expiry_ms: u64 = expiry_str.parse().expect("Could not parse expiry");
-            let expiry = Instant::now() + Duration::from_millis(expiry_ms);
-            let entry = Entry::new(val.to_string(), Some(expiry));
-            cache.insert(key.to_string(), entry);
-        } else {
-            let entry = Entry::new(val.to_string(), None);
-            cache.insert(key.to_string(), entry);
-        }
-    }
-
-    fn get(&self, mut iter: Iter<'_, BulkString>) -> Payload {
-        let BulkString(key) = iter.next().unwrap();
-        let cache = self.cache.lock().unwrap();
-
-        if let Some(entry) = cache.get(key) {
-            if let Some(expiry) = entry.expiry {
-                if Instant::now() > expiry {
-                    return Payload::Null;
-                }
-            }
-            return Payload::Bulk(BulkString(entry.value.clone()));
-        }
-
-        Payload::Null
     }
 }
 
