@@ -1,3 +1,8 @@
+//! RESP Types
+//!
+//! Provides an abstraction for RESP Types. These include:
+//! Arrays, SimpleStrings, BulkStrings
+
 #[derive(Debug, PartialEq)]
 pub struct Array {
     pub contents: Vec<BulkString>,

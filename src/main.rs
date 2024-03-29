@@ -35,8 +35,8 @@ async fn main() -> Result<()> {
         let (stream, _) = listener.accept().await.unwrap();
         let cloned_parser = parser.clone();
         let server = Server::new(match args.replicaof {
-            Some(_) => Role::Master,
-            None => Role::Slave,
+            Some(_) => Role::Slave,
+            None => Role::Master,
         });
 
         tokio::spawn(async move {
