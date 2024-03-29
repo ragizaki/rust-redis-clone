@@ -22,7 +22,7 @@ impl Parser {
                     .map(|BulkString(s)| s.clone())
                     .collect::<Vec<String>>()
                     .join(" ");
-                Ok(Payload::Bulk(BulkString(String::from(echoed))))
+                Ok(Payload::Bulk(BulkString(echoed)))
             }
             "set" => {
                 server.set(iter);
@@ -59,7 +59,7 @@ impl Parser {
                     .parse()
                     .expect(&format!("Could not parse {size} into a usize"));
 
-                let word_start = length + 3 as usize;
+                let word_start = length + 3_usize;
                 let str = String::from_utf8(s[word_start..word_start + size].as_bytes().to_vec())
                     .expect("Could not form string");
 
