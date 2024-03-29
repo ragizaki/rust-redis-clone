@@ -82,31 +82,11 @@ impl Server {
         info
     }
 
-    pub fn ping(&self) -> Option<Payload> {
+    pub fn payload(&self, s: &str) -> Option<Payload> {
         match self.role {
             Role::Master => None,
             Role::Slave => {
-                let msg = Payload::from_str("ping").unwrap();
-                Some(msg)
-            }
-        }
-    }
-
-    pub fn replconf_port(&self, port: u64) -> Option<Payload> {
-        match self.role {
-            Role::Master => None,
-            Role::Slave => {
-                let msg = Payload::from_str(&format!("REPLCONF listening-port {port}")).unwrap();
-                Some(msg)
-            }
-        }
-    }
-
-    pub fn replconf_capa(&self) -> Option<Payload> {
-        match self.role {
-            Role::Master => None,
-            Role::Slave => {
-                let msg = Payload::from_str("REPLCONF capa psync2").unwrap();
+                let msg = Payload::from_str(s).unwrap();
                 Some(msg)
             }
         }

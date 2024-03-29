@@ -84,16 +84,26 @@ async fn handle_connection(
 }
 
 async fn send_handhshake(mut stream: TcpStream, server: &Server, port: u64) -> Result<()> {
+    let mut buf = [0; 1024];
     // PING Master
-    let ping = server.ping().unwrap();
+    let ping = server.payload("ping").unwrap();
     stream.write_all(&ping.serialize()).await?;
+    stream.read(&mut buf).await?;
 
     // REPLCONF notifying master of listening port
-    let port_msg = server.replconf_port(port).unwrap();
+    let msg = format!("REPLCONF listening-port {port}");
+    let port_msg = server.payload(&msg).unwrap();
     stream.write_all(&port_msg.serialize()).await?;
+    stream.read(&mut buf).await?;
 
     // REPLCONF notifying master of slave's capabilities
-    let capa_msg = server.replconf_capa().unwrap();
+    let capa_msg = server.payload("REPLCONF capa psync2").unwrap();
     stream.write_all(&capa_msg.serialize()).await?;
+    stream.read(&mut buf).await?;
+
+    let psync_msg = server.payload("PSYNC ? -1").unwrap();
+    stream.write_all(&psync_msg.serialize()).await?;
+    stream.read(&mut buf).await?;
+
     Ok(())
 }
