@@ -42,7 +42,7 @@ async fn main() -> Result<()> {
             let addr = iter.next().unwrap();
             let port = iter.next().unwrap();
             let stream = TcpStream::connect(format!("{addr}:{port}")).await?;
-            send_handhshake(stream, &server).await?;
+            send_handhshake(stream, &server, args.port).await?;
         }
         None => {}
     }
@@ -79,12 +79,21 @@ async fn handle_connection(
         let body = parser.parse(request)?;
         let payload = parser.from_array(body, &mut server)?;
 
-        stream.write_all(payload.serialize().as_bytes()).await?;
+        stream.write_all(&payload.serialize()).await?;
     }
 }
 
-async fn send_handhshake(mut stream: TcpStream, server: &Server) -> Result<()> {
-    let msg = server.ping().unwrap();
-    stream.write_all(msg.serialize().as_bytes()).await?;
+async fn send_handhshake(mut stream: TcpStream, server: &Server, port: u64) -> Result<()> {
+    // PING Master
+    let ping = server.ping().unwrap();
+    stream.write_all(&ping.serialize()).await?;
+
+    // REPLCONF notifying master of listening port
+    let port_msg = server.replconf_port(port).unwrap();
+    stream.write_all(&port_msg.serialize()).await?;
+
+    // REPLCONF notifying master of slave's capabilities
+    let capa_msg = server.replconf_capa().unwrap();
+    stream.write_all(&capa_msg.serialize()).await?;
     Ok(())
 }

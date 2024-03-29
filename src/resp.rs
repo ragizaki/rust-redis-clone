@@ -3,6 +3,8 @@
 //! Provides an abstraction for RESP Types. These include:
 //! Arrays, SimpleStrings, BulkStrings
 
+use std::str::FromStr;
+
 #[derive(Debug, PartialEq)]
 pub struct Array {
     pub contents: Vec<BulkString>,
@@ -29,7 +31,13 @@ pub enum Payload {
 }
 
 impl Payload {
-    pub fn serialize(&self) -> String {
+    pub fn serialize(&self) -> Vec<u8> {
+        self.to_string().into_bytes()
+    }
+}
+
+impl ToString for Payload {
+    fn to_string(&self) -> String {
         match self {
             Self::Array(Array { contents }) => {
                 let strings = contents
@@ -46,6 +54,18 @@ impl Payload {
     }
 }
 
+impl FromStr for Payload {
+    type Err = String;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let contents = s
+            .split_whitespace()
+            .map(|s| BulkString(s.to_string()))
+            .collect::<Vec<BulkString>>();
+
+        Ok(Payload::Array(Array { contents }))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -53,17 +73,17 @@ mod tests {
     #[test]
     fn test_serialize_simple() {
         let ss = Payload::Simple(SimpleString(String::from("ping")));
-        assert_eq!(ss.serialize(), String::from("+ping\r\n"));
+        assert_eq!(ss.to_string(), String::from("+ping\r\n"));
     }
 
     #[test]
     fn test_serialize_bulk() {
         let bs = Payload::Bulk(BulkString(String::from("ping")));
-        assert_eq!(bs.serialize(), String::from("$4\r\nping\r\n"));
+        assert_eq!(bs.to_string(), String::from("$4\r\nping\r\n"));
     }
 
     #[test]
     fn test_serialize_null() {
-        assert_eq!(Payload::Null.serialize(), String::from("$-1\r\n"));
+        assert_eq!(Payload::Null.to_string(), String::from("$-1\r\n"));
     }
 }

@@ -1,7 +1,8 @@
-use crate::resp::{Array, BulkString, Payload};
+use crate::resp::{BulkString, Payload};
 use rand::distributions::{Alphanumeric, DistString};
 use std::collections::HashMap;
 use std::slice::Iter;
+use std::str::FromStr;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
@@ -85,9 +86,28 @@ impl Server {
         match self.role {
             Role::Master => None,
             Role::Slave => {
-                let msg = Array::new(vec![BulkString(String::from("ping"))]);
-                let payload = Payload::Array(msg);
-                Some(payload)
+                let msg = Payload::from_str("ping").unwrap();
+                Some(msg)
+            }
+        }
+    }
+
+    pub fn replconf_port(&self, port: u64) -> Option<Payload> {
+        match self.role {
+            Role::Master => None,
+            Role::Slave => {
+                let msg = Payload::from_str(&format!("REPLCONF listening-port {port}")).unwrap();
+                Some(msg)
+            }
+        }
+    }
+
+    pub fn replconf_capa(&self) -> Option<Payload> {
+        match self.role {
+            Role::Master => None,
+            Role::Slave => {
+                let msg = Payload::from_str("REPLCONF capa psync2").unwrap();
+                Some(msg)
             }
         }
     }
