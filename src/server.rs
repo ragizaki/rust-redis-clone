@@ -1,4 +1,5 @@
 use crate::resp::{BulkString, Payload};
+use rand::distributions::{Alphanumeric, DistString};
 use std::collections::HashMap;
 use std::slice::Iter;
 use std::sync::{Arc, Mutex};
@@ -65,7 +66,18 @@ impl Server {
     }
 
     pub fn info(&self) -> String {
-        self.role.to_string()
+        let mut info = format!("role:{}", self.role.to_string());
+
+        match self.role {
+            Role::Master => {
+                let replid = Alphanumeric.sample_string(&mut rand::thread_rng(), 40);
+                info.push_str(&format!("master_replid:{replid}"));
+                info.push_str("master_repl_offset:0");
+            }
+            Role::Slave => {}
+        };
+
+        info
     }
 }
 

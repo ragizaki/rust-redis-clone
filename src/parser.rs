@@ -30,7 +30,7 @@ impl Parser {
                 Ok(Payload::Simple(SimpleString(String::from("OK"))))
             }
             "get" => Ok(server.get(iter)),
-            "info" => Ok(Payload::Bulk(BulkString(format!("role:{}", server.info())))),
+            "info" => Ok(Payload::Bulk(BulkString(server.info()))),
             other => Err(anyhow!("Command {other} is unimplemented")),
         }
     }
