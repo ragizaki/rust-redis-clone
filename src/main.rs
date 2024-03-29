@@ -36,15 +36,12 @@ async fn main() -> Result<()> {
         None => Role::Master,
     });
 
-    match args.replicaof {
-        Some(vec) => {
-            let mut iter = vec.into_iter();
-            let addr = iter.next().unwrap();
-            let port = iter.next().unwrap();
-            let stream = TcpStream::connect(format!("{addr}:{port}")).await?;
-            send_handhshake(stream, &server, args.port).await?;
-        }
-        None => {}
+    if let Some(vec) = args.replicaof {
+        let mut iter = vec.into_iter();
+        let addr = iter.next().unwrap();
+        let port = iter.next().unwrap();
+        let stream = TcpStream::connect(format!("{addr}:{port}")).await?;
+        send_handhshake(stream, &server, args.port).await?;
     }
 
     loop {

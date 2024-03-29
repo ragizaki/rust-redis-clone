@@ -3,6 +3,7 @@
 //! Provides an abstraction for RESP Types. These include:
 //! Arrays, SimpleStrings, BulkStrings
 
+use std::fmt::Write;
 use std::str::FromStr;
 
 #[derive(Debug, PartialEq)]
@@ -42,8 +43,10 @@ impl ToString for Payload {
             Self::Array(Array { contents }) => {
                 let strings = contents
                     .iter()
-                    .map(|BulkString(s)| format!("${}\r\n{}\r\n", s.len(), s))
-                    .collect::<String>();
+                    .fold(String::new(), |mut acc, BulkString(s)| {
+                        let _ = write!(acc, "${}\r\n{}\r\n", s.len(), s);
+                        acc
+                    });
 
                 format!("*{}\r\n{}", contents.len(), strings)
             }
