@@ -41,15 +41,19 @@ async fn main() -> Result<()> {
         let addr = iter.next().unwrap();
         let port = iter.next().unwrap();
         let stream = TcpStream::connect(format!("{addr}:{port}")).await?;
-        send_handhshake(stream, &server, args.port).await?;
+        server.send_handshake(stream, args.port).await?;
     }
 
     loop {
-        let (stream, _) = listener.accept().await.unwrap();
+        let (mut stream, _) = listener.accept().await.unwrap();
         let cloned_parser = parser.clone();
         let server = server.clone();
 
         tokio::spawn(async move {
+            if server.role == Role::Slave {
+                server.receive_handshake(&mut stream).await.unwrap();
+            }
+
             match handle_connection(stream, cloned_parser, server).await {
                 Ok(()) => (),
                 Err(msg) => eprintln!("Error handling connection: {}", msg),
@@ -78,29 +82,4 @@ async fn handle_connection(
 
         stream.write_all(&payload.serialize()).await?;
     }
-}
-
-async fn send_handhshake(mut stream: TcpStream, server: &Server, port: u64) -> Result<()> {
-    let mut buf = [0; 1024];
-    // PING Master
-    let ping = server.payload("ping").unwrap();
-    stream.write_all(&ping.serialize()).await?;
-    stream.read(&mut buf).await?;
-
-    // REPLCONF notifying master of listening port
-    let msg = format!("REPLCONF listening-port {port}");
-    let port_msg = server.payload(&msg).unwrap();
-    stream.write_all(&port_msg.serialize()).await?;
-    stream.read(&mut buf).await?;
-
-    // REPLCONF notifying master of slave's capabilities
-    let capa_msg = server.payload("REPLCONF capa psync2").unwrap();
-    stream.write_all(&capa_msg.serialize()).await?;
-    stream.read(&mut buf).await?;
-
-    let psync_msg = server.payload("PSYNC ? -1").unwrap();
-    stream.write_all(&psync_msg.serialize()).await?;
-    stream.read(&mut buf).await?;
-
-    Ok(())
 }

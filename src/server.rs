@@ -1,10 +1,15 @@
 use crate::resp::{BulkString, Payload};
+use anyhow::{anyhow, Result};
 use rand::distributions::{Alphanumeric, DistString};
 use std::collections::HashMap;
 use std::slice::Iter;
 use std::str::FromStr;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
+use tokio::{
+    io::{AsyncReadExt, AsyncWriteExt},
+    net::TcpStream,
+};
 
 #[derive(Debug, PartialEq)]
 struct Entry {
@@ -21,7 +26,7 @@ impl Entry {
 #[derive(Clone)]
 pub struct Server {
     cache: Arc<Mutex<HashMap<String, Entry>>>,
-    role: Role,
+    pub role: Role,
 }
 
 impl Server {
@@ -30,6 +35,49 @@ impl Server {
             cache: Arc::new(Mutex::new(HashMap::new())),
             role,
         }
+    }
+
+    pub async fn receive_handshake(&self, stream: &mut TcpStream) -> Result<()> {
+        match self.role {
+            Role::Slave => Err(anyhow!("Replica cannot receive handshake")),
+            Role::Master => {
+                let mut buf = [0; 1024];
+                let ok = self.payload("OK").unwrap();
+
+                stream.read(&mut buf).await?;
+                stream.write_all(&ok.serialize()).await?;
+
+                stream.read(&mut buf).await?;
+                stream.write_all(&ok.serialize()).await?;
+
+                Ok(())
+            }
+        }
+    }
+
+    pub async fn send_handshake(&self, mut stream: TcpStream, port: u64) -> Result<()> {
+        let mut buf = [0; 1024];
+        // PING Master
+        let ping = self.payload("ping").unwrap();
+        stream.write_all(&ping.serialize()).await?;
+        stream.read(&mut buf).await?;
+
+        // REPLCONF notifying master of listening port
+        let msg = format!("REPLCONF listening-port {port}");
+        let port_msg = self.payload(&msg).unwrap();
+        stream.write_all(&port_msg.serialize()).await?;
+        stream.read(&mut buf).await?;
+
+        // REPLCONF notifying master of slave's capabilities
+        let capa_msg = self.payload("REPLCONF capa psync2").unwrap();
+        stream.write_all(&capa_msg.serialize()).await?;
+        stream.read(&mut buf).await?;
+
+        let psync_msg = self.payload("PSYNC ? -1").unwrap();
+        stream.write_all(&psync_msg.serialize()).await?;
+        stream.read(&mut buf).await?;
+
+        Ok(())
     }
 
     pub fn set(&mut self, mut iter: Iter<'_, BulkString>) {
@@ -93,7 +141,7 @@ impl Server {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub enum Role {
     Master,
     Slave,
