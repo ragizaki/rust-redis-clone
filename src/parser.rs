@@ -11,7 +11,7 @@ impl Parser {
         Parser
     }
 
-    pub fn from_array(&self, value: Array, server: &mut Server) -> Result<Payload> {
+    pub fn from_array(value: Array, server: &mut Server) -> Result<Payload> {
         let mut iter = value.contents.iter();
         let command = iter.next().unwrap();
 

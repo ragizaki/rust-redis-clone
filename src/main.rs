@@ -77,7 +77,7 @@ async fn handle_connection(
         let request = std::str::from_utf8(&buf[..num_bytes]).expect("Invalid ASCII");
         let parser = parser.lock().await;
         let body = parser.parse(request)?;
-        let payload = parser.from_array(body, &mut server)?;
+        let payload = Parser::from_array(body, &mut server)?;
 
         stream.write_all(&payload.serialize()).await?;
     }
