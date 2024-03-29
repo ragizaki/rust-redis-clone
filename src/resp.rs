@@ -22,6 +22,7 @@ pub struct BulkString(pub String);
 
 #[derive(Debug, PartialEq)]
 pub enum Payload {
+    Array(Array),
     Simple(SimpleString),
     Bulk(BulkString),
     Null,
@@ -30,6 +31,14 @@ pub enum Payload {
 impl Payload {
     pub fn serialize(&self) -> String {
         match self {
+            Self::Array(Array { contents }) => {
+                let strings = contents
+                    .iter()
+                    .map(|BulkString(s)| format!("${}\r\n{}\r\n", s.len(), s))
+                    .collect::<String>();
+
+                format!("*{}{}", contents.len(), strings)
+            }
             Self::Simple(SimpleString(s)) => format!("+{s}\r\n"),
             Self::Bulk(BulkString(s)) => format!("${}\r\n{s}\r\n", s.len()),
             Self::Null => String::from("$-1\r\n"),

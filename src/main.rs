@@ -31,13 +31,26 @@ async fn main() -> Result<()> {
         .await
         .unwrap();
 
+    let server = Server::new(match args.replicaof {
+        Some(_) => Role::Slave,
+        None => Role::Master,
+    });
+
+    match args.replicaof {
+        Some(vec) => {
+            let mut iter = vec.into_iter();
+            let addr = iter.next().unwrap();
+            let port = iter.next().unwrap();
+            let stream = TcpStream::connect(format!("{addr}:{port}")).await?;
+            send_handhshake(stream, &server).await?;
+        }
+        None => {}
+    }
+
     loop {
         let (stream, _) = listener.accept().await.unwrap();
         let cloned_parser = parser.clone();
-        let server = Server::new(match args.replicaof {
-            Some(_) => Role::Slave,
-            None => Role::Master,
-        });
+        let server = server.clone();
 
         tokio::spawn(async move {
             match handle_connection(stream, cloned_parser, server).await {
@@ -68,4 +81,10 @@ async fn handle_connection(
 
         stream.write_all(payload.serialize().as_bytes()).await?;
     }
+}
+
+async fn send_handhshake(mut stream: TcpStream, server: &Server) -> Result<()> {
+    let msg = server.ping().unwrap();
+    stream.write_all(msg.serialize().as_bytes()).await?;
+    Ok(())
 }

@@ -1,4 +1,4 @@
-use crate::resp::{BulkString, Payload};
+use crate::resp::{Array, BulkString, Payload};
 use rand::distributions::{Alphanumeric, DistString};
 use std::collections::HashMap;
 use std::slice::Iter;
@@ -17,6 +17,7 @@ impl Entry {
     }
 }
 
+#[derive(Clone)]
 pub struct Server {
     cache: Arc<Mutex<HashMap<String, Entry>>>,
     role: Role,
@@ -79,8 +80,20 @@ impl Server {
 
         info
     }
+
+    pub fn ping(&self) -> Option<Payload> {
+        match self.role {
+            Role::Master => None,
+            Role::Slave => {
+                let msg = Array::new(vec![BulkString(String::from("ping"))]);
+                let payload = Payload::Array(msg);
+                Some(payload)
+            }
+        }
+    }
 }
 
+#[derive(Clone)]
 pub enum Role {
     Master,
     Slave,
