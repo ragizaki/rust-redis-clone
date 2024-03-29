@@ -37,7 +37,7 @@ impl Payload {
                     .map(|BulkString(s)| format!("${}\r\n{}\r\n", s.len(), s))
                     .collect::<String>();
 
-                format!("*{}{}", contents.len(), strings)
+                format!("*{}\r\n{}", contents.len(), strings)
             }
             Self::Simple(SimpleString(s)) => format!("+{s}\r\n"),
             Self::Bulk(BulkString(s)) => format!("${}\r\n{s}\r\n", s.len()),
