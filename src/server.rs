@@ -25,14 +25,27 @@ impl Entry {
 
 #[derive(Clone)]
 pub struct Server {
+    replication_id: Option<String>,
+    replication_offset: Option<usize>,
     cache: Arc<Mutex<HashMap<String, Entry>>>,
     pub role: Role,
 }
 
 impl Server {
     pub fn new(role: Role) -> Self {
+        let cache = Arc::new(Mutex::new(HashMap::new()));
+        let (replication_id, replication_offset) = match role {
+            Role::Slave => (None, None),
+            Role::Master => (
+                Some(Alphanumeric.sample_string(&mut rand::thread_rng(), 40)),
+                Some(0),
+            ),
+        };
+
         Self {
-            cache: Arc::new(Mutex::new(HashMap::new())),
+            replication_id,
+            replication_offset,
+            cache,
             role,
         }
     }
@@ -102,9 +115,14 @@ impl Server {
 
         match self.role {
             Role::Master => {
-                let replid = Alphanumeric.sample_string(&mut rand::thread_rng(), 40);
-                info.push_str(&format!("master_replid:{replid}"));
-                info.push_str("master_repl_offset:0");
+                info.push_str(&format!(
+                    "master_replid:{}",
+                    self.replication_id.as_ref().unwrap()
+                ));
+                info.push_str(&format!(
+                    "master_repl_offset:{}",
+                    self.replication_offset.unwrap()
+                ));
             }
             Role::Slave => {}
         };
@@ -115,6 +133,14 @@ impl Server {
     pub fn payload(&self, s: &str) -> Option<Payload> {
         let msg = Payload::from_str(s).unwrap();
         Some(msg)
+    }
+
+    pub fn reply_psync(&self) -> String {
+        format!(
+            "FULLRESYNC {} {}\r\n",
+            self.replication_id.as_ref().unwrap(),
+            self.replication_offset.unwrap()
+        )
     }
 }
 
