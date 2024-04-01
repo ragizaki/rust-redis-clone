@@ -45,6 +45,7 @@ impl Server {
                 let ok = self.payload("OK").unwrap();
 
                 stream.read(&mut buf).await?;
+                eprintln!("Received {:?} from the client", buf);
                 stream.write_all(&ok.serialize()).await?;
 
                 stream.read(&mut buf).await?;
