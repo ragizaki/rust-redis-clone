@@ -50,7 +50,7 @@ async fn main() -> Result<()> {
         let server = server.clone();
 
         tokio::spawn(async move {
-            if server.role == Role::Slave {
+            if server.role == Role::Master {
                 server.receive_handshake(&mut stream).await.unwrap();
             }
 
