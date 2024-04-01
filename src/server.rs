@@ -42,14 +42,13 @@ impl Server {
             Role::Slave => Err(anyhow!("Replica cannot receive handshake")),
             Role::Master => {
                 let mut buf = [0; 1024];
-                let ok = self.payload("OK").unwrap();
+                let ok = "+OK\r\n".as_bytes();
 
                 stream.read(&mut buf).await?;
-                eprintln!("Received {:?} from the client", buf);
-                stream.write_all(&ok.serialize()).await?;
+                stream.write_all(ok).await?;
 
                 stream.read(&mut buf).await?;
-                stream.write_all(&ok.serialize()).await?;
+                stream.write_all(ok).await?;
 
                 Ok(())
             }
