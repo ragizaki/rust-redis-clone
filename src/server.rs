@@ -132,13 +132,8 @@ impl Server {
     }
 
     pub fn payload(&self, s: &str) -> Option<Payload> {
-        match self.role {
-            Role::Master => None,
-            Role::Slave => {
-                let msg = Payload::from_str(s).unwrap();
-                Some(msg)
-            }
-        }
+        let msg = Payload::from_str(s).unwrap();
+        Some(msg)
     }
 }
 
