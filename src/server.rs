@@ -37,24 +37,6 @@ impl Server {
         }
     }
 
-    pub async fn receive_handshake(&self, stream: &mut TcpStream) -> Result<()> {
-        match self.role {
-            Role::Slave => Err(anyhow!("Replica cannot receive handshake")),
-            Role::Master => {
-                let mut buf = [0; 1024];
-                let ok = "+OK\r\n".as_bytes();
-
-                stream.read(&mut buf).await?;
-                stream.write_all(ok).await?;
-
-                stream.read(&mut buf).await?;
-                stream.write_all(ok).await?;
-
-                Ok(())
-            }
-        }
-    }
-
     pub async fn send_handshake(&self, mut stream: TcpStream, port: u64) -> Result<()> {
         let mut buf = [0; 1024];
         // PING Master

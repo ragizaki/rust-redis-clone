@@ -31,6 +31,7 @@ impl Parser {
             }
             "get" => Ok(server.get(iter)),
             "info" => Ok(Payload::Bulk(BulkString(server.info()))),
+            "replconf" => Ok(Payload::Simple(SimpleString(String::from("OK")))),
             other => Err(anyhow!("Command {other} is unimplemented")),
         }
     }

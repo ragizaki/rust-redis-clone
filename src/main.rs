@@ -45,15 +45,11 @@ async fn main() -> Result<()> {
     }
 
     loop {
-        let (mut stream, _) = listener.accept().await.unwrap();
+        let (stream, _) = listener.accept().await.unwrap();
         let cloned_parser = parser.clone();
         let server = server.clone();
 
         tokio::spawn(async move {
-            if server.role == Role::Master {
-                server.receive_handshake(&mut stream).await.unwrap();
-            }
-
             match handle_connection(stream, cloned_parser, server).await {
                 Ok(()) => (),
                 Err(msg) => eprintln!("Error handling connection: {}", msg),
