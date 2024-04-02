@@ -15,26 +15,28 @@ impl Parser {
         let mut iter = value.contents.iter();
         let command = iter.next().unwrap();
 
-        match command.0.to_lowercase().as_str() {
-            "ping" => Ok(Payload::Simple(SimpleString(String::from("PONG")))),
+        let payload = match command.0.to_lowercase().as_str() {
+            "ping" => Payload::Simple(SimpleString(String::from("PONG"))),
             "echo" => {
                 let echoed = iter
                     .map(|BulkString(s)| s.clone())
                     .collect::<Vec<String>>()
                     .join(" ");
-                Ok(Payload::Bulk(BulkString(echoed)))
+                Payload::Bulk(BulkString(echoed))
             }
             "set" => {
                 server.set(iter);
 
-                Ok(Payload::Simple(SimpleString(String::from("OK"))))
+                Payload::Simple(SimpleString(String::from("OK")))
             }
-            "get" => Ok(server.get(iter)),
-            "info" => Ok(Payload::Bulk(BulkString(server.info()))),
-            "replconf" => Ok(Payload::Simple(SimpleString(String::from("OK")))),
-            "psync" => Ok(Payload::Simple(SimpleString(server.reply_psync()))),
-            other => Err(anyhow!("Command {other} is unimplemented")),
-        }
+            "get" => server.get(iter),
+            "info" => Payload::Bulk(BulkString(server.info())),
+            "replconf" => Payload::Simple(SimpleString(String::from("OK"))),
+            "psync" => Payload::Simple(SimpleString(server.reply_psync())),
+            other => return Err(anyhow!("Command {other} is unimplemented")),
+        };
+
+        Ok(payload)
     }
 
     pub fn parse(&self, s: &str) -> Result<Array> {

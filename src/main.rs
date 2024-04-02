@@ -5,6 +5,7 @@ mod server;
 use anyhow::Result;
 use clap::Parser as ClapParser;
 use parser::Parser;
+use resp::{Payload, SimpleString};
 use server::{Role, Server};
 use std::sync::Arc;
 use tokio::{
@@ -77,5 +78,13 @@ async fn handle_connection(
         let payload = Parser::from_array(body, &mut server)?;
 
         stream.write_all(&payload.serialize()).await?;
+
+        // send RDB sync if necessary
+        match payload {
+            Payload::Simple(SimpleString(s)) if s.starts_with("FULLRESYNC") => {
+                stream.write_all(server.empty_rdb().as_bytes()).await?
+            }
+            _ => {}
+        }
     }
 }
