@@ -86,5 +86,7 @@ async fn handle_connection(
             }
             _ => {}
         }
+
+        stream.flush().await?
     }
 }
