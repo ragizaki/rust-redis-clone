@@ -139,14 +139,25 @@ impl Server {
 
     pub fn reply_psync(&self) -> String {
         format!(
-            "FULLRESYNC {} {}\r\n",
+            "FULLRESYNC {} {}",
             self.replication_id.as_ref().unwrap(),
             self.replication_offset.unwrap()
         )
     }
 
-    pub fn empty_rdb(&self) -> String {
-        format!("${}\r\n{}", EMPTY_RDB.len(), EMPTY_RDB)
+    pub fn empty_rdb(&self) -> Vec<u8> {
+        let decoded: Vec<u8> = (0..EMPTY_RDB.len())
+            .step_by(2)
+            .map(|i| u8::from_str_radix(&EMPTY_RDB[i..i + 2], 16).unwrap())
+            .collect();
+
+        let mut empty_rdb_bytes = Vec::new();
+        empty_rdb_bytes.push(b'$');
+        empty_rdb_bytes.extend_from_slice(decoded.len().to_string().as_bytes());
+        empty_rdb_bytes.extend_from_slice(b"\r\n");
+        empty_rdb_bytes.extend_from_slice(&decoded);
+
+        empty_rdb_bytes
     }
 }
 

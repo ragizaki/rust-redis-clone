@@ -82,7 +82,7 @@ async fn handle_connection(
         // send RDB sync if necessary
         match payload {
             Payload::Simple(SimpleString(s)) if s.starts_with("FULLRESYNC") => {
-                stream.write_all("hello".as_bytes()).await?
+                stream.write_all(&server.empty_rdb()).await?
             }
             _ => {}
         }
