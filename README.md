@@ -3,7 +3,7 @@
 This is my implementation of CodeCrafter's
 ["Build Your Own Redis" Challenge](https://app.codecrafters.io/courses/redis/introduction).
 
-Implemented using Rust. The server is able to handle concurrent Redis connections using Tokio threads and async file, read and write operations. Commands are supported via Redis' serialization protocol (RESP) specification. You can read more about the spec [here])(https://redis.io/docs/latest/develop/reference/protocol-spec/)
+Implemented using Rust. The server is able to handle concurrent Redis connections using Tokio threads and async file, read and write operations. Commands are supported via Redis' serialization protocol (RESP) specification. You can read more about the spec [here](https://redis.io/docs/latest/develop/reference/protocol-spec/)
 
 ## Master/Replica Architecture
 ![master/replica architecture](https://miro.medium.com/v2/resize:fit:1062/1*LkgG8SiU3pbeslElStmY9w.png)
