@@ -1,35 +1,11 @@
 [![progress-banner](https://backend.codecrafters.io/progress/redis/c8e803e0-7f95-44cf-97dd-591e9f6c1118)](https://app.codecrafters.io/users/codecrafters-bot?r=2qF)
 
-This is a starting point for Rust solutions to the
-["Build Your Own Redis" Challenge](https://codecrafters.io/challenges/redis).
+This is my implementation of CodeCrafter's
+["Build Your Own Redis" Challenge](https://app.codecrafters.io/courses/redis/introduction).
 
-In this challenge, you'll build a toy Redis clone that's capable of handling
-basic commands like `PING`, `SET` and `GET`. Along the way we'll learn about
-event loops, the Redis protocol and more.
+Implemented using Rust. The server is able to handle concurrent Redis connections using Tokio threads and async file, read and write operations. Commands are supported via Redis' serialization protocol (RESP) specification. You can read more about the spec [here])(https://redis.io/docs/latest/develop/reference/protocol-spec/)
 
-**Note**: If you're viewing this repo on GitHub, head over to
-[codecrafters.io](https://codecrafters.io) to try the challenge.
+## Master/Replica Architecture
+![master/replica architecture](https://miro.medium.com/v2/resize:fit:1062/1*LkgG8SiU3pbeslElStmY9w.png)
 
-# Passing the first stage
-
-The entry point for your Redis implementation is in `src/main.rs`. Study and
-uncomment the relevant code, and push your changes to pass the first stage:
-
-```sh
-git add .
-git commit -m "pass 1st stage" # any msg
-git push origin master
-```
-
-That's all!
-
-# Stage 2 & beyond
-
-Note: This section is for stages 2 and beyond.
-
-1. Ensure you have `cargo (1.54)` installed locally
-1. Run `./spawn_redis_server.sh` to run your Redis server, which is implemented
-   in `src/main.rs`. This command compiles your Rust project, so it might be
-   slow the first time you run it. Subsequent runs will be fast.
-1. Commit your changes and run `git push origin master` to submit your solution
-   to CodeCrafters. Test output will be streamed to your terminal.
+My implementation uses the `tokio::mpsc::channel` crate to broadcast changes from a master to all its replicas running on separate coroutines via Tokio's runtime. The server supports syncing via an RDB file. Each server has a data store allowing the user to `set` and `get` different cache values.
